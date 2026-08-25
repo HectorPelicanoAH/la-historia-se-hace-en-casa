@@ -1,3 +1,4 @@
-import { FlatCompat } from "@eslint/eslintrc";
-const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
-export default [...compat.extends("next/core-web-vitals", "next/typescript")];
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTypeScript from "eslint-config-next/typescript";
+const config=[...nextVitals,...nextTypeScript,{ignores:[".next/**","out/**","node_modules/**"],rules:{"@next/next/no-img-element":"off"}}];
+export default config;

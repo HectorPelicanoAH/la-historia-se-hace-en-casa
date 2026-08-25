@@ -1,4 +1,5 @@
-import StoryExperience, { asset } from "./story-experience";
+import StoryExperience from "./story-experience";
+import { asset } from "./asset";
 const people = [
   {name:"Samara",age:8,role:"La observadora",quote:"¿Por qué lo hacían así?",pos:"left"},
   {name:"Julia",age:7,role:"La creadora",quote:"¡Vamos a probarlo!",pos:"center"},
