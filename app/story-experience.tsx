@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { asset } from "./asset";
 
 type Note = { id: string; label: string; title: string; body: string; question: string; x: number; y: number };
@@ -43,16 +43,18 @@ const stations: Station[] = [
 ];
 
 export default function StoryExperience() {
-  const [opened,setOpened]=useState(false),[station,setStation]=useState(0),[focus,setFocus]=useState<string|null>(null),[storyOpen,setStoryOpen]=useState(false),[visited,setVisited]=useState<string[]>([]);
+  const [opened,setOpened]=useState(false),[station,setStation]=useState(0),[focus,setFocus]=useState<string|null>(null),[discovering,setDiscovering]=useState<string|null>(null),[storyOpen,setStoryOpen]=useState(false),[visited,setVisited]=useState<string[]>([]);
+  const discoveryTimer=useRef<number|null>(null);
   const current=stations[station],activeNote=current.notes.find(note=>note.id===focus);
   // El progreso persistido solo existe en el cliente; se restaura tras la hidratación.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem(storageKey)||"null") as {opened?:boolean;station?:number;visited?:string[]}|null;if(saved){setOpened(Boolean(saved.opened));setStation(Math.min(3,Math.max(0,saved.station||0)));setVisited(Array.isArray(saved.visited)?saved.visited:[])}}catch{}},[]);
   useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify({opened,station,visited}))}catch{}},[opened,station,visited]);
-  useEffect(()=>{const close=(event:KeyboardEvent)=>{if(event.key==="Escape"){setFocus(null);setStoryOpen(false)}};window.addEventListener("keydown",close);return()=>window.removeEventListener("keydown",close)},[]);
-  const chooseStation=(index:number)=>{setStation(index);setFocus(null);setStoryOpen(false)};
-  const inspect=(id:string)=>{setFocus(id);setStoryOpen(false);setVisited(v=>v.includes(id)?v:[...v,id])};
-  const closeBook=()=>{setOpened(false);setFocus(null);setStoryOpen(false)};
+  useEffect(()=>{const close=(event:KeyboardEvent)=>{if(event.key==="Escape"){setFocus(null);setStoryOpen(false)}};window.addEventListener("keydown",close);return()=>{window.removeEventListener("keydown",close);if(discoveryTimer.current)window.clearTimeout(discoveryTimer.current)}},[]);
+  const cancelDiscovery=()=>{if(discoveryTimer.current)window.clearTimeout(discoveryTimer.current);discoveryTimer.current=null;setDiscovering(null)};
+  const chooseStation=(index:number)=>{cancelDiscovery();setStation(index);setFocus(null);setStoryOpen(false)};
+  const inspect=(id:string)=>{setStoryOpen(false);if(visited.includes(id)){setFocus(id);return}cancelDiscovery();setDiscovering(id);setVisited(v=>[...v,id]);discoveryTimer.current=window.setTimeout(()=>{setFocus(id);setDiscovering(null);discoveryTimer.current=null},620)};
+  const closeBook=()=>{cancelDiscovery();setOpened(false);setFocus(null);setStoryOpen(false)};
 
   if(!opened)return <section className="forest-cover" aria-labelledby="cover-title">
     <img className="forest-art" src={asset("book-closed-forest.png")} alt="Un libro azul cerrado descansa sobre el musgo del bosque"/><div className="forest-vignette"/>
@@ -70,13 +72,13 @@ export default function StoryExperience() {
       <article className={`book-spread ${focus||storyOpen?"is-zoomed":""}`} aria-label={`${current.season}: ${current.title}`}>
         <img className="spread-art" src={asset(current.image)} alt={`Escena ilustrada de ${current.title.toLowerCase()}`}/><div className="paper-shade"/><div className="spine"/>
         <header className="chapter-label"><span>{current.number} · {current.season}</span><h1>{current.title}</h1><p>{current.subtitle}</p></header>
-        {current.notes.map(note=><button key={note.id} className={`story-pin ${focus===note.id?"active":""}`} style={{left:`${note.x}%`,top:`${note.y}%`}} onClick={()=>inspect(note.id)} aria-label={`Acercarse a ${note.label}`} aria-pressed={focus===note.id}><span>+</span><small>{note.label}</small></button>)}
+        {current.notes.map(note=><button key={note.id} className={`story-pin ${visited.includes(note.id)?"discovered":""} ${discovering===note.id?"discovering":""} ${focus===note.id?"active":""}`} style={{left:`${note.x}%`,top:`${note.y}%`}} onClick={()=>inspect(note.id)} aria-label={visited.includes(note.id)?`Volver a ${note.label}`:`Buscar un hallazgo cerca de ${note.label}`} aria-pressed={focus===note.id}><span className="discovery-mark" aria-hidden="true">✦</span><span className="discovery-ring" aria-hidden="true"/><small>{visited.includes(note.id)?note.label:""}</small></button>)}
         <button className="story-ribbon" onClick={()=>{setStoryOpen(true);setFocus(null)}}><span>Leer</span> el relato</button><div className="folio left">Año 1</div><div className="folio right">{station+1} / 4</div>
       </article>
       {(activeNote||storyOpen)&&<aside className="zoom-note" role="dialog" aria-modal="true" aria-label={activeNote?activeNote.title:current.title}><button className="close-note" onClick={()=>{setFocus(null);setStoryOpen(false)}} aria-label="Cerrar nota">×</button>
         {activeNote?<><p className="note-type">Hallazgo · {activeNote.label}</p><h2>{activeNote.title}</h2><p>{activeNote.body}</p><blockquote>{activeNote.question}</blockquote></>:<><p className="note-type">Estación {current.number} · {current.season}</p><h2>{current.title}</h2>{current.story.map(paragraph=><p key={paragraph}>{paragraph}</p>)}<blockquote>{current.quote}</blockquote><div className="mission"><span>Para hacer en casa</span><h3>{current.mission.title}</h3><p>{current.mission.text}</p></div></>}
       </aside>}
     </div>
-    <footer className="reader-footer"><p><span className="mouse-icon" aria-hidden="true">＋</span> Pulsa sobre el libro para acercarte a sus secretos.</p><div className="progress-dots">{stations.map((item,index)=><button key={item.season} onClick={()=>chooseStation(index)} aria-label={`Ir a ${item.season}`} className={station===index?"active":""}/>)}</div><p className="adult-note">Historia para explorar en familia · 6–12 años</p></footer>
+    <footer className="reader-footer"><p><span className="mouse-icon" aria-hidden="true">⌁</span> Explora la ilustración: los hallazgos están escondidos.</p><div className="progress-dots">{stations.map((item,index)=><button key={item.season} onClick={()=>chooseStation(index)} aria-label={`Ir a ${item.season}`} className={station===index?"active":""}/>)}</div><p className="adult-note">Historia para explorar en familia · 6–12 años</p></footer>
   </section>;
 }
