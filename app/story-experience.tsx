@@ -1,52 +1,82 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { asset } from "./asset";
-type Clue="cave"|"fire"|"tools"|"mammoth"; type Answer="strength"|"cooperation"|"magic"|null;
-type Progress={page:number;highestPage:number;dialTurned:boolean;foundClues:Clue[];quizAnswer:Answer};
-const initial:Progress={page:1,highestPage:1,dialTurned:false,foundClues:[],quizAnswer:null};
-const storageKey="historia-en-casa-progress-v1";
-const clueData:{id:Clue;label:string;text:string;className:string}[]=[
- {id:"cave",label:"Cueva",text:"Arte y señales: conservan ideas, aunque no siempre sabemos con certeza qué significaban.",className:"hot-cave"},
- {id:"fire",label:"Fuego",text:"Calor, luz, protección y cocina. Mantenerlo requería atención y cooperación.",className:"hot-fire"},
- {id:"tools",label:"Herramientas",text:"Piedra, madera y hueso se convertían en tecnología: conocimiento aplicado.",className:"hot-tools"},
- {id:"mammoth",label:"Mamut",text:"Humanos y grandes animales convivieron en paisajes fríos y cambiantes.",className:"hot-mammoth"}
+
+type Note = { id: string; label: string; title: string; body: string; question: string; x: number; y: number };
+type Station = { season: string; number: string; title: string; subtitle: string; image: string; color: string; story: string[]; quote: string; notes: Note[]; mission: { title: string; text: string } };
+const storageKey = "historia-en-casa-progress-v2";
+
+const stations: Station[] = [
+  { season:"Primavera", number:"I", title:"Las huellas del deshielo", subtitle:"Moverse también era saber leer el paisaje", image:"station-1-migration.png", color:"#87a982",
+    story:["El reloj se detuvo cuando la nieve empezaba a retirarse. Samara fue la primera en verlas: una fila de huellas cruzaba el barro nuevo.","Nadie caminaba sin rumbo. El grupo conocía los pasos de los animales, los ríos que crecían y los lugares donde volverían las plantas. Sus objetos podían viajar con ellos."], quote:"El camino no estaba dibujado, pero muchas personas lo recordaban.",
+    notes:[
+      {id:"tracks",label:"Huellas",title:"Un mapa que cambia",body:"Las huellas, el barro y las ramas rotas daban pistas sobre animales y personas. Observar bien ayudaba a decidir por dónde avanzar.",question:"¿Qué pista mirarías primero?",x:57,y:72},
+      {id:"river",label:"Río",title:"Agua en movimiento",body:"Durante el deshielo, cruzar un río podía volverse difícil. Conocer sus cambios era tan importante como recordar el camino.",question:"¿Dónde buscarías un paso seguro?",x:78,y:48},
+      {id:"bundles",label:"Equipaje",title:"Todo debía poder viajar",body:"Ropa, recipientes, herramientas y alimento se organizaban en cargas transportables. Cada objeto tenía que merecer su peso.",question:"¿Qué tres cosas llevarías tú?",x:39,y:48},
+      {id:"herd",label:"Manada",title:"Seguir sin acercarse",body:"Los grupos humanos observaban los movimientos estacionales de los animales y compartían ese conocimiento durante generaciones.",question:"¿Qué cambia cuando llega la primavera?",x:88,y:29}],
+    mission:{title:"Diario de rastros",text:"Busca tres señales de paso en un parque —una hoja doblada, una huella, una pluma— y dibuja qué crees que ocurrió. No recojas nada: observa y deja el lugar como estaba."}},
+  { season:"Verano", number:"II", title:"La pared que recuerda", subtitle:"Una imagen puede guardar una pregunta", image:"station-2-art.png", color:"#d4a34c",
+    story:["En el refugio, Julia descubrió cuencos con tierras de colores. Una mujer trituraba ocre; otra mezclaba carbón. En la pared aparecían animales hechos con líneas, manchas y memoria.","No sabemos con certeza qué significaban todas aquellas imágenes. Eso no las hace menos valiosas: nos enseñan que observar, imaginar y comunicar ya importaba."], quote:"No conocemos la historia completa. Por eso miramos con cuidado.",
+    notes:[
+      {id:"ochre",label:"Pigmentos",title:"Colores de la tierra",body:"El ocre es un mineral rico en hierro. Triturado y mezclado podía producir amarillos, rojos y marrones duraderos.",question:"¿Qué colores encuentras en la escena?",x:63,y:76},
+      {id:"hands",label:"Manos",title:"Una presencia de hace milenios",body:"Algunas manos se marcaron soplando pigmento alrededor. Otras huellas se hicieron aplicando color directamente.",question:"¿Qué puede contar una silueta?",x:73,y:30},
+      {id:"animals",label:"Animales",title:"Mirar antes de dibujar",body:"Las formas muestran una observación atenta del cuerpo y el movimiento. Su significado exacto sigue siendo una pregunta abierta.",question:"¿Cuál parece estar moviéndose?",x:86,y:39},
+      {id:"mix",label:"Preparación",title:"Crear también es tecnología",body:"Seleccionar, triturar y mezclar materiales requiere pruebas, herramientas y conocimiento compartido.",question:"¿Qué paso crees que requiere más paciencia?",x:45,y:69}],
+    mission:{title:"Una historia sin palabras",text:"Dibuja en papel kraft una escena usando solo dos colores y tres formas. Pide a otra persona que la interprete antes de contarle tu intención."}},
+  { season:"Otoño", number:"III", title:"El viento cambia", subtitle:"Prepararse era una tarea de muchas manos", image:"station-3-shelter.png", color:"#c4754d",
+    story:["Las aves cruzaban el cielo cuando Lucas notó que todos estaban ocupados. Unos reforzaban el cortavientos; otros cosían ropa o revisaban las reservas.","No era una carrera contra el frío, sino una conversación con él. Probaban, corregían y repartían tareas. Una mejora pequeña podía proteger a todo el grupo."], quote:"La mejor idea no siempre es la primera: es la que se prueba y mejora.",
+    notes:[
+      {id:"screen",label:"Cortavientos",title:"Cambiar el aire",body:"Una pantalla baja de ramas, pieles o fibras podía reducir el viento cerca del refugio. Su posición importaba tanto como el material.",question:"¿De qué dirección llega el viento?",x:36,y:38},
+      {id:"needle",label:"Costura",title:"Unir para abrigar",body:"Las agujas de hueso permitieron confeccionar prendas ajustadas. Perforar, coser y reparar prolongaba la vida de cada pieza.",question:"¿Dónde ves una reparación?",x:25,y:68},
+      {id:"food",label:"Cestas",title:"Ordenar para recordar",body:"Los recipientes ayudaban a transportar, clasificar y proteger recursos. Muchos materiales orgánicos apenas se conservan hoy.",question:"¿Qué separarías en distintas cestas?",x:72,y:78},
+      {id:"birds",label:"Aves",title:"El cielo también avisa",body:"Los movimientos de aves y otros animales podían anunciar cambios estacionales y ayudar a anticipar el tiempo.",question:"¿Hacia dónde se dirige la bandada?",x:69,y:12}],
+    mission:{title:"Refugio de sobremesa",text:"Construye un refugio pequeño con cartón, tela y pinzas. Sopla suavemente desde distintos lados y cambia una sola cosa cada vez hasta proteger una figura de papel."}},
+  { season:"Invierno", number:"IV", title:"La llama compartida", subtitle:"El conocimiento crece cuando circula", image:"station-4-fire.png", color:"#66849a",
+    story:["La noche llegó pronto. Alrededor del fuego, una niña observaba cómo tallaban, otra trenzaba una cesta y una persona mayor señalaba las huellas que bajaban al valle.","Samara entendió entonces que la herramienta más poderosa no estaba sobre el suelo: era la experiencia que una persona podía enseñar a otra."], quote:"Nadie guardaba todo el saber. Juntos recordaban más.",
+    notes:[
+      {id:"fire",label:"Fuego",title:"Una tarea constante",body:"El fuego ofrecía calor, luz y protección, pero mantenerlo exigía combustible, atención y aprendizaje. No era un botón: era una responsabilidad.",question:"¿Qué tareas exige una llama?",x:42,y:54},
+      {id:"tools",label:"Herramientas",title:"Conocimiento con forma",body:"Elegir la piedra, golpear con precisión y aprovechar cada fragmento requería práctica y enseñanza. Tecnología significa conocimiento aplicado.",question:"¿Qué diferencias ves entre las piezas?",x:50,y:69},
+      {id:"art",label:"Pared",title:"Memoria en el refugio",body:"Imágenes y signos convivían con las tareas cotidianas. No podemos asegurar su sentido, pero sí observar dónde y cómo se hicieron.",question:"¿Qué detalle se repite?",x:18,y:24},
+      {id:"valley",label:"Valle",title:"Leer desde lejos",body:"La nieve hacía visibles recorridos que otros suelos ocultaban. Compartir observaciones ayudaba al grupo a planificar.",question:"¿Cuántos rastros diferentes ves?",x:78,y:42}],
+    mission:{title:"Una cadena de saber",text:"Una persona enseña a otra un nudo, un ritmo o un plegado de papel. La segunda lo enseña a una tercera. Comparad el resultado y contad qué explicación funcionó mejor."}}
 ];
-const activities=[
- {title:"Una pared que cuenta",meta:"5–8 años · interior · 35 min",goal:"Comunicar una idea sin escritura y observar formas animales.",materials:"Papel kraft, café o té frío, témpera infantil ocre, roja y negra, esponja y dedos.",steps:["Envejeced el papel con café o té y dejadlo secar.","Elegid un animal o una idea que queráis contar.","Pintad con dedos y esponja; luego interpretad las imágenes."],voice:"Samara pregunta: «¿Qué pistas ayudan a entender el dibujo?»",safety:"No tocar ni pintar cuevas o abrigos reales."},
- {title:"Un lugar contra el viento",meta:"6–9 años · exterior · 60 min",goal:"Probar estructuras, repartir tareas y mejorar un diseño.",materials:"Ramas caídas y ligeras, cuerda gruesa, sábana vieja y pinzas grandes.",steps:["Buscad un lugar llano y repartid tareas.","Montad una estructura baja con ayuda adulta.","Probad de qué lado entra el viento y mejorad el refugio."],voice:"Julia propone: «¡Probemos una mejora cada vez!»",safety:"Supervisión adulta; no trepar; comprobar estabilidad y entorno."},
- {title:"Una forma para una función",meta:"6–10 años · interior o exterior · 45 min",goal:"Partir de un problema para diseñar una herramienta.",materials:"Palo sin astillas, arcilla o piedra roma, lana o cordón y cartón.",steps:["Elegid un problema: alcanzar, transportar o marcar.","Dibujad una herramienta y explicad cada parte.","Construid un modelo sin filo y comprobad su forma."],voice:"Lucas pregunta: «¿Y si el primer diseño no funciona?»",safety:"No tallar piedra, crear filos ni dejar golpes reales a los niños."}
-];
-const years=[
- ["Los orígenes","Primeros humanos","Vida nómada","Agricultores","Aldeas"],
- ["Grandes civilizaciones","Mesopotamia","Egipto","Grecia","Roma"],
- ["Civilizaciones del mundo","China","Mesoamérica","Andes","Norteamérica"],
- ["Edad Media","Al-Ándalus","Vikingos","Castillos","Monasterios"],
- ["Edad Moderna","Renacimiento","Dos mundos","Siglo XVII","Ciencia"],
- ["Mundo contemporáneo","Industria","Campo y ciudad","Nuestros abuelos","El futuro"]
-];
-function validate(raw:unknown):Progress{if(!raw||typeof raw!=="object")return initial;const x=raw as Partial<Progress>,allowed:Clue[]=["cave","fire","tools","mammoth"],answers:Answer[]=["strength","cooperation","magic",null];return{page:Math.min(4,Math.max(1,Number.isInteger(x.page)?x.page!:1)),highestPage:Math.min(4,Math.max(1,Number.isInteger(x.highestPage)?x.highestPage!:1)),dialTurned:x.dialTurned===true,foundClues:Array.isArray(x.foundClues)?[...new Set(x.foundClues.filter((v):v is Clue=>allowed.includes(v as Clue)))]:[],quizAnswer:answers.includes(x.quizAnswer as Answer)?x.quizAnswer as Answer:null}}
-export default function StoryExperience(){
- const [progress,setProgress]=useState(initial),[ready,setReady]=useState(false),[activity,setActivity]=useState(0),[selected,setSelected]=useState<string[]>([]);
- // La hidratación del estado persistido solo puede hacerse en el cliente.
- // eslint-disable-next-line react-hooks/set-state-in-effect
- useEffect(()=>{try{setProgress(validate(JSON.parse(localStorage.getItem(storageKey)||"null")))}catch{setProgress(initial)}setReady(true)},[]);
- useEffect(()=>{if(ready)try{localStorage.setItem(storageKey,JSON.stringify(progress))}catch{}},[progress,ready]);
- const go=(page:number)=>setProgress(p=>({...p,page,highestPage:Math.max(p.highestPage,page)}));
- const reset=()=>{try{localStorage.removeItem(storageKey)}catch{}setProgress(initial)};
- const find=(id:Clue)=>setProgress(p=>({...p,foundClues:p.foundClues.includes(id)?p.foundClues:[...p.foundClues,id]}));
- const toggle=(item:string)=>setSelected(s=>s.includes(item)?s.filter(x=>x!==item):s.length<3?[...s,item]:s);
- return <>
- <section className="section story-section" id="cuento"><div className="section-heading"><span className="eyebrow">Capítulo 1 · La llama compartida</span><h2>Un cuento que se abre con tus descubrimientos</h2></div><div className="story-shell">
- <nav className="steps" aria-label="Páginas del cuento">{["El hallazgo","La aguja","El campamento","La pregunta"].map((n,i)=><button key={n} onClick={()=>go(i+1)} disabled={progress.highestPage<i+1} aria-current={progress.page===i+1?"step":undefined}><span>{i+1}</span>{n}</button>)}</nav>
- <article className="story-page" aria-live="polite">
- {progress.page===1&&<><p className="page-count">Página 1 de 4</p><h3>El hallazgo</h3><p>Lucas apartó hojas junto a una roca rojiza. Parecía enorme, pero era demasiado ligera. Debajo esperaba una caja de madera.</p><blockquote>—¿Por qué la esconderían? —preguntó Samara.<br/>—¡Vamos a abrirla! —dijo Julia.<br/>—¿Y si no sabemos qué hay dentro? —susurró Lucas.</blockquote><p>La tapa crujió. Dentro había un reloj de latón… sin una sola hora.</p><button className="button" onClick={()=>go(2)}>Abrir la caja</button></>}
- {progress.page===2&&<><p className="page-count">Página 2 de 4</p><h3>La aguja</h3><p>En vez de números, el dial tenía marcas como caminos. Los tres apoyaron una mano.</p><button className={`dial ${progress.dialTurned?"turned":""}`} aria-label="Girar la aguja del reloj" onClick={()=>setProgress(p=>({...p,dialTurned:true}))}><span className="needle"/><span>{progress.dialTurned?"Hace unos 35.000 años":"Girar la aguja"}</span></button>{progress.dialTurned&&<button className="button" onClick={()=>go(3)}>Entrar en el campamento</button>}</>}
- {progress.page===3&&<><p className="page-count">Página 3 de 4</p><h3>El campamento</h3><p>El aire olía a humo y nieve. Encuentra las cuatro pistas.</p><div className="scene"><img src={asset("prehistoric-fire-scene.png")} alt="Campamento paleolítico con cueva, fuego compartido, herramientas y mamuts"/>{clueData.map(c=><button key={c.id} className={`hotspot ${c.className} ${progress.foundClues.includes(c.id)?"found":""}`} aria-pressed={progress.foundClues.includes(c.id)} aria-label={`Explorar ${c.label}`} onClick={()=>find(c.id)}>{progress.foundClues.includes(c.id)?"✓":"+"}</button>)}</div><p className="status" role="status">{progress.foundClues.length} de 4 pistas encontradas</p><div className="clue-notes">{clueData.filter(c=>progress.foundClues.includes(c.id)).map(c=><p key={c.id}><strong>{c.label}:</strong> {c.text}</p>)}</div><button className="button" disabled={progress.foundClues.length<4} onClick={()=>go(4)}>Sentarse junto al fuego</button></>}
- {progress.page===4&&<><p className="page-count">Página 4 de 4</p><h3>La pregunta</h3><p>Alrededor de la llama, cada persona aportaba algo. Las herramientas no eran solo objetos: eran conocimientos observados, probados, enseñados y mejorados por muchas manos.</p><fieldset className="quiz"><legend>¿Qué ayudó más al grupo a vivir y aprender?</legend>{[["strength","La fuerza de una sola persona"],["cooperation","Observar, aprender y cooperar"],["magic","La magia de un reloj"]].map(([v,l])=><label key={v}><input type="radio" name="quiz" checked={progress.quizAnswer===v} onChange={()=>setProgress(p=>({...p,quizAnswer:v as Answer}))}/>{l}</label>)}</fieldset>{progress.quizAnswer&&<p className="feedback" role="status">{progress.quizAnswer==="cooperation"?"Exacto: compartir experiencia permitió resolver más problemas juntos.":"Vuelve a mirar las pistas: ¿qué podía transmitirse y mejorar entre personas?"}</p>}<a className={`button ${progress.quizAnswer!=="cooperation"?"disabled-link":""}`} aria-disabled={progress.quizAnswer!=="cooperation"} tabIndex={progress.quizAnswer==="cooperation"?0:-1} href="#actividades">Llevar la historia a casa</a></>}
- </article><button className="reset" onClick={reset}>Empezar de nuevo</button></div></section>
- <section className="section green" id="actividades"><div className="section-heading"><span className="eyebrow">Hacer en familia</span><h2>Tres misiones seguras</h2></div><div className="tabs" role="tablist" aria-label="Actividades">{activities.map((a,i)=><button role="tab" aria-selected={activity===i} aria-controls="activity-panel" id={`tab-${i}`} key={a.title} onClick={()=>setActivity(i)}>{a.title}</button>)}</div><article className="activity" role="tabpanel" id="activity-panel" aria-labelledby={`tab-${activity}`}><p className="meta">{activities[activity].meta}</p><h3>{activities[activity].title}</h3><div className="activity-grid"><div><h4>Objetivo</h4><p>{activities[activity].goal}</p><h4>Materiales</h4><p>{activities[activity].materials}</p></div><div><h4>Pasos</h4><ol>{activities[activity].steps.map(s=><li key={s}>{s}</li>)}</ol></div></div><blockquote>{activities[activity].voice}</blockquote><aside className="safety"><strong>Para hacerlo con seguridad:</strong> {activities[activity].safety}</aside></article></section>
- <section className="section" id="reto"><div className="challenge"><div><span className="eyebrow">Reto de ingenio</span><h2>Solo puedes llevar tres cosas</h2><p>Pasarás una noche en el bosque antiguo. No hay una única combinación correcta.</p></div><div className="object-list">{["Agua","Manta","Olla metálica","Móvil sin cobertura","Bolsa de caramelos","Juguete gigante"].map(item=><button key={item} aria-pressed={selected.includes(item)} disabled={!selected.includes(item)&&selected.length>=3} onClick={()=>toggle(item)}>{selected.includes(item)?"✓ ":""}{item}</button>)}<p className="status" role="status">{selected.length}/3 elegidos{selected.length?`: ${selected.join(", ")}`:""}</p>{selected.length===3&&<p className="prompt">¿Para qué sirve cada objeto? ¿Qué problema sigue sin resolverse?</p>}</div></div></section>
- <section className="section map-section" id="mapa"><div className="section-heading"><span className="eyebrow">6 años · 24 estaciones</span><h2>El mapa de todos los viajes</h2></div><div className="years">{years.map((y,i)=><article className="year card" key={y[0]}><p className="meta">Año {i+1} {i===0&&<span className="here">Estamos aquí</span>}</p><h3>{y[0]}</h3><ol>{y.slice(1).map((s,j)=><li key={s}><span>{j+1}</span>{s}</li>)}</ol></article>)}</div></section>
- <section className="section guide" id="guia"><div><span className="eyebrow">Guía para adultos</span><h2>Leer, hacer y conversar</h2><p>Leed por turnos, dejad que las preguntas respiren y pedid razones. La meta no es memorizar fechas, sino observar necesidades, cooperación y cambios tecnológicos.</p><h3>Una historia contada con cautela</h3><p>Situamos el viaje hace unos 35.000 años, sin asegurar significados desconocidos de signos o pinturas. Tecnología significa conocimiento aplicado. No incluimos pan: sus evidencias conocidas son mucho más recientes, de hace unos 14.400 años.</p></div><aside><h3>Fuentes para seguir explorando</h3><ul><li><a href="https://humanorigins.si.edu/human-characteristics/humans-change-world" target="_blank" rel="noreferrer">Smithsonian — hogares y refugios</a></li><li><a href="https://humanorigins.si.edu/evidence/behavior/stone-tools" target="_blank" rel="noreferrer">Smithsonian — herramientas de piedra</a></li><li><a href="https://whc.unesco.org/en/list/310/" target="_blank" rel="noreferrer">UNESCO — Altamira y arte paleolítico</a></li></ul><p className="safety"><strong>Seguridad:</strong> los modelos infantiles nunca reproducen filos, golpes ni fuego real.</p></aside></section>
- </>;
+
+export default function StoryExperience() {
+  const [opened,setOpened]=useState(false),[station,setStation]=useState(0),[focus,setFocus]=useState<string|null>(null),[storyOpen,setStoryOpen]=useState(false),[visited,setVisited]=useState<string[]>([]);
+  const current=stations[station],activeNote=current.notes.find(note=>note.id===focus);
+  // El progreso persistido solo existe en el cliente; se restaura tras la hidratación.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem(storageKey)||"null") as {opened?:boolean;station?:number;visited?:string[]}|null;if(saved){setOpened(Boolean(saved.opened));setStation(Math.min(3,Math.max(0,saved.station||0)));setVisited(Array.isArray(saved.visited)?saved.visited:[])}}catch{}},[]);
+  useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify({opened,station,visited}))}catch{}},[opened,station,visited]);
+  useEffect(()=>{const close=(event:KeyboardEvent)=>{if(event.key==="Escape"){setFocus(null);setStoryOpen(false)}};window.addEventListener("keydown",close);return()=>window.removeEventListener("keydown",close)},[]);
+  const chooseStation=(index:number)=>{setStation(index);setFocus(null);setStoryOpen(false)};
+  const inspect=(id:string)=>{setFocus(id);setStoryOpen(false);setVisited(v=>v.includes(id)?v:[...v,id])};
+  const closeBook=()=>{setOpened(false);setFocus(null);setStoryOpen(false)};
+
+  if(!opened)return <section className="forest-cover" aria-labelledby="cover-title">
+    <img className="forest-art" src={asset("book-closed-forest.png")} alt="Un libro azul cerrado descansa sobre el musgo del bosque"/><div className="forest-vignette"/>
+    <header className="cover-brand"><span>La historia</span><strong>se hace en casa</strong></header>
+    <div className="cover-intro"><p className="kicker">Año uno · Los orígenes</p><h1 id="cover-title">Hay un libro<br/>esperando en el bosque</h1><p>Cuatro estaciones. Cuatro viajes. Todo empieza al tocar la cubierta.</p></div>
+    <button className="open-book" onClick={()=>setOpened(true)} aria-label="Abrir el libro y comenzar el viaje"><span className="pulse"/><span>Abrir el libro</span><small>toca la cubierta</small></button>
+    <p className="landscape-hint">Una experiencia creada para tablet y pantalla grande</p>
+  </section>;
+
+  return <section className="reader" style={{"--season":current.color} as React.CSSProperties}>
+    <div className="portrait-gate"><span aria-hidden="true">↻</span><strong>Gira el móvil</strong><p>Este libro se disfruta en horizontal.</p></div>
+    <header className="reader-header"><button className="wordmark" onClick={closeBook}><span>La historia</span> se hace en casa</button><p>Año 1 · Los orígenes</p><div className="reader-tools"><span>{visited.length} hallazgos</span><button onClick={closeBook}>Cerrar libro</button></div></header>
+    <nav className="bookmarks" aria-label="Estaciones del primer año">{stations.map((item,index)=><button key={item.season} className={station===index?"active":""} style={{"--tab":item.color} as React.CSSProperties} onClick={()=>chooseStation(index)} aria-current={station===index?"page":undefined}><span>{item.number}</span>{item.season}</button>)}</nav>
+    <div className="reading-desk">
+      <article className={`book-spread ${focus||storyOpen?"is-zoomed":""}`} aria-label={`${current.season}: ${current.title}`}>
+        <img className="spread-art" src={asset(current.image)} alt={`Escena ilustrada de ${current.title.toLowerCase()}`}/><div className="paper-shade"/><div className="spine"/>
+        <header className="chapter-label"><span>{current.number} · {current.season}</span><h1>{current.title}</h1><p>{current.subtitle}</p></header>
+        {current.notes.map(note=><button key={note.id} className={`story-pin ${focus===note.id?"active":""}`} style={{left:`${note.x}%`,top:`${note.y}%`}} onClick={()=>inspect(note.id)} aria-label={`Acercarse a ${note.label}`} aria-pressed={focus===note.id}><span>+</span><small>{note.label}</small></button>)}
+        <button className="story-ribbon" onClick={()=>{setStoryOpen(true);setFocus(null)}}><span>Leer</span> el relato</button><div className="folio left">Año 1</div><div className="folio right">{station+1} / 4</div>
+      </article>
+      {(activeNote||storyOpen)&&<aside className="zoom-note" role="dialog" aria-modal="true" aria-label={activeNote?activeNote.title:current.title}><button className="close-note" onClick={()=>{setFocus(null);setStoryOpen(false)}} aria-label="Cerrar nota">×</button>
+        {activeNote?<><p className="note-type">Hallazgo · {activeNote.label}</p><h2>{activeNote.title}</h2><p>{activeNote.body}</p><blockquote>{activeNote.question}</blockquote></>:<><p className="note-type">Estación {current.number} · {current.season}</p><h2>{current.title}</h2>{current.story.map(paragraph=><p key={paragraph}>{paragraph}</p>)}<blockquote>{current.quote}</blockquote><div className="mission"><span>Para hacer en casa</span><h3>{current.mission.title}</h3><p>{current.mission.text}</p></div></>}
+      </aside>}
+    </div>
+    <footer className="reader-footer"><p><span className="mouse-icon" aria-hidden="true">＋</span> Pulsa sobre el libro para acercarte a sus secretos.</p><div className="progress-dots">{stations.map((item,index)=><button key={item.season} onClick={()=>chooseStation(index)} aria-label={`Ir a ${item.season}`} className={station===index?"active":""}/>)}</div><p className="adult-note">Historia para explorar en familia · 6–12 años</p></footer>
+  </section>;
 }
